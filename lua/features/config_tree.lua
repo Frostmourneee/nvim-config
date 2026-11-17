@@ -61,26 +61,40 @@ local function snapshot()
 	}
 end
 
-local function open_settings_workspace()
+local function open_workspace(options)
 	local api = require("nvim-tree.api")
 	local state = snapshot()
-	local config_dir = vim.fn.stdpath("config")
 
 	vim.cmd("tabnew")
-	state.settings_tab = vim.api.nvim_get_current_tabpage()
+	state.workspace_tab = vim.api.nvim_get_current_tabpage()
+	state.workspace_id = options.id
 	set_state(state)
 
-	api.tree.open({ path = config_dir })
+	api.tree.open({ path = options.root })
 	api.tree.collapse_all()
+
+	if options.selected_path then
+		api.tree.find_file({
+			buf = options.selected_path,
+			focus = true,
+		})
+
+		local node = api.tree.get_node_under_cursor()
+		if node and same_path(node.absolute_path, options.selected_path) and not node.open then
+			api.node.open.edit(node)
+		end
+	end
 
 	if state.width then
 		api.tree.resize({ absolute = state.width })
 	end
 end
 
-local function close_settings_tab(state)
-	if not state.settings_tab
-		or not vim.api.nvim_tabpage_is_valid(state.settings_tab) then
+local function close_workspace_tab(state)
+	local workspace_tab = state.workspace_tab or state.settings_tab
+
+	if not workspace_tab
+		or not vim.api.nvim_tabpage_is_valid(workspace_tab) then
 		return true
 	end
 
@@ -88,12 +102,12 @@ local function close_settings_tab(state)
 		return true
 	end
 
-	vim.api.nvim_set_current_tabpage(state.settings_tab)
+	vim.api.nvim_set_current_tabpage(workspace_tab)
 
 	local ok, err = pcall(vim.cmd, "tabclose")
 	if not ok then
 		vim.notify(
-			"Save or discard settings changes before leaving:\n" .. tostring(err),
+			"Save or discard workspace changes before leaving:\n" .. tostring(err),
 			vim.log.levels.ERROR
 		)
 		return false
@@ -163,20 +177,47 @@ local function restore_workspace(state)
 	end
 end
 
-function M.toggle()
+local function toggle(options)
 	local state = get_state()
 
 	if not state then
-		open_settings_workspace()
+		open_workspace(options)
 		return
 	end
 
-	if not close_settings_tab(state) then
+	if not close_workspace_tab(state) then
 		return
 	end
 
 	set_state(nil)
 	restore_workspace(state)
+
+	local workspace_id = state.workspace_id or "settings"
+	if workspace_id ~= options.id then
+		open_workspace(options)
+	end
+end
+
+function M.toggle()
+	toggle({
+		id = "settings",
+		root = vim.fn.stdpath("config"),
+	})
+end
+
+function M.toggle_skills()
+	local skills_dir = vim.fs.normalize(vim.fn.expand("~/.codex/skills"))
+
+	if vim.fn.isdirectory(skills_dir) ~= 1 then
+		vim.notify("Codex skills directory not found: " .. skills_dir, vim.log.levels.ERROR)
+		return
+	end
+
+	toggle({
+		id = "skills",
+		root = vim.fn.expand("~"),
+		selected_path = skills_dir,
+	})
 end
 
 return M

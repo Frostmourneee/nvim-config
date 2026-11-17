@@ -120,3 +120,10 @@ vim.keymap.set("n", "<leader>t", "<cmd>NvimTreeToggle<CR>", {
 	silent = false,
 	desc = "Toggle nvim-tree",
 })
+
+vim.keymap.set("n", "<leader>os", function()
+	require("features.config_tree").toggle_skills()
+end, {
+	silent = true,
+	desc = "Toggle Codex skills workspace",
+})
