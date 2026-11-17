@@ -1,0 +1,31 @@
+# backtraces-path = "/path/to/neovide_backtraces.log" # see below for the default platform specific location
+fork = false
+frame = "none"
+# grid = "420x240" # mutually exclusive with `size` and `maximized`
+size = "3840x2160" # mutually exclusive with `grid` and `maximized`
+idle = false
+# icon = "/full/path/to/neovide.ico" # Example path. Default icon is bundled. Use .icns on macOS.
+# maximized = true
+mouse-cursor-icon = "arrow"
+neovim-bin = "/home/frostmourneee/.local/bin/nvim" # in reality found dynamically on $PATH if unset
+no-multigrid = false
+srgb = false # platform-specific: false (Linux/macOS) or true (Windows)
+startup-message-capture = true
+tabs = true
+title-hidden = true
+vsync = true
+# wayland-app-id = "neovide"
+wsl = false
+# x11-wm-class = "neovide"
+# x11-wm-class-instance = "neovide"
+
+[box-drawing]
+# "font-glyph", "native" or "selected-native"
+mode = "native"
+
+[box-drawing.sizes]
+default = [2, 4]  # Thin and thick values respectively, for all sizes
+
+[font]
+normal = ["JetBrainsMonoNL Nerd Font Mono"]
+size = 11.0
