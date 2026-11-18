@@ -1,4 +1,5 @@
 require("plugins.editing")
+require("plugins.buffers")
 require("plugins.nvim_tree")
 require("plugins.smart_splits")
 require("plugins.completion")

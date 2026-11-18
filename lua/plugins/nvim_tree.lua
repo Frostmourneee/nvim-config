@@ -1,4 +1,5 @@
 local paste_screenshot = require("features.paste_screenshot")
+local workspace_layout = require("features.workspace_layout")
 
 require("nvim-tree").setup({
 	sync_root_with_cwd = true,
@@ -10,6 +11,8 @@ require("nvim-tree").setup({
 	view = {
 		number = false,
 		relativenumber = false,
+		side = "left",
+		width = 30,
 	},
 
 	actions = {
@@ -49,7 +52,7 @@ require("nvim-tree").setup({
 					api.node.open.edit()
 				end
 			else
-				api.node.open.vertical()
+				workspace_layout.edit_file(node.absolute_path, false)
 			end
 		end
 
@@ -64,8 +67,7 @@ require("nvim-tree").setup({
 					api.node.open.edit()
 				end
 			else
-				api.node.open.vertical()
-				api.tree.focus()
+				workspace_layout.edit_file(node.absolute_path, true)
 			end
 		end
 
@@ -116,10 +118,9 @@ require("nvim-tree").setup({
 	end,
 })
 
-vim.keymap.set("n", "<leader>t", "<cmd>NvimTreeToggle<CR>", {
-	silent = false,
-	desc = "Toggle nvim-tree",
-})
+-- Clear the old tree toggle when reloading an existing session. Tree is now
+-- opened and focused through <leader>j.
+pcall(vim.keymap.del, "n", "<leader>t")
 
 vim.keymap.set("n", "<leader>os", function()
 	require("features.config_tree").toggle_skills()

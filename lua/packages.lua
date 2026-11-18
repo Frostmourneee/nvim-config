@@ -1,6 +1,8 @@
 vim.pack.add({
 	{ src = "https://github.com/nvim-tree/nvim-web-devicons" },
 	{ src = "https://github.com/nvim-tree/nvim-tree.lua" },
+	{ src = "https://github.com/nvim-mini/mini.bufremove" },
+	{ src = "https://github.com/akinsho/bufferline.nvim" },
 	{ src = "https://github.com/mrjones2014/smart-splits.nvim" },
 	{ src = "https://github.com/neovim/nvim-lspconfig" },
 	{

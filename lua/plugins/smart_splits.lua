@@ -1,4 +1,6 @@
 local smart_splits = require("smart-splits")
+local workspace_layout = require("features.workspace_layout")
+local panels = require("features.panels")
 
 smart_splits.setup({
 	ignored_buftypes = {
@@ -23,17 +25,35 @@ smart_splits.setup({
 
 local map = vim.keymap.set
 
-map("n", "<leader>j", smart_splits.move_cursor_left, {
-	desc = "Move to left split",
+-- Clear the previous double-leader area bindings when reloading a session.
+for _, key in ipairs({
+	"<leader><leader>i",
+	"<leader><leader>j",
+	"<leader><leader>k",
+	"<leader><leader>l",
+}) do
+	pcall(vim.keymap.del, "n", key)
+end
+
+map("n", "<leader>i", function()
+	workspace_layout.focus_area("code")
+end, {
+	desc = "Jump to code window",
 })
-map("n", "<leader>k", smart_splits.move_cursor_down, {
-	desc = "Move to lower split",
+map("n", "<leader>j", function()
+	workspace_layout.toggle_tree_focus()
+end, {
+	desc = "Toggle tree focus/open/hide",
 })
-map("n", "<leader>i", smart_splits.move_cursor_up, {
-	desc = "Move to upper split",
+map("n", "<leader>k", function()
+	panels.toggle_focus("terminal")
+end, {
+	desc = "Toggle terminal focus/open/hide",
 })
-map("n", "<leader>l", smart_splits.move_cursor_right, {
-	desc = "Move to right split",
+map("n", "<leader>l", function()
+	panels.toggle_focus("codex")
+end, {
+	desc = "Toggle Codex focus/open/hide",
 })
 
 -- Clear the previous resize bindings when reloading an existing session.
@@ -41,30 +61,30 @@ for _, key in ipairs({ "<S-j>", "<S-k>", "<S-i>", "<S-l>" }) do
 	pcall(vim.keymap.del, "n", key)
 end
 
-map("n", "<C-j>", smart_splits.resize_left, {
-	desc = "Resize split left",
-})
-map("n", "<C-k>", smart_splits.resize_down, {
-	desc = "Resize split down",
-})
-map("n", "<C-i>", smart_splits.resize_up, {
-	desc = "Resize split up",
-})
-map("n", "<C-l>", smart_splits.resize_right, {
-	desc = "Resize split right",
-})
+local function resize(direction, fallback)
+	return function()
+		local amount = vim.v.count1 * 3
 
-map("n", "<leader><leader>j", smart_splits.swap_buf_left, {
-	desc = "Swap buffer left",
+		if workspace_layout.resize_managed_float(direction, amount) then
+			return
+		end
+
+		fallback(amount)
+		workspace_layout.schedule_reflow()
+	end
+end
+
+map("n", "<C-j>", resize("left", smart_splits.resize_left), {
+	desc = "Resize split or float left",
 })
-map("n", "<leader><leader>k", smart_splits.swap_buf_down, {
-	desc = "Swap buffer down",
+map("n", "<C-k>", resize("down", smart_splits.resize_down), {
+	desc = "Resize split or float down",
 })
-map("n", "<leader><leader>i", smart_splits.swap_buf_up, {
-	desc = "Swap buffer up",
+map("n", "<C-i>", resize("up", smart_splits.resize_up), {
+	desc = "Resize split or float up",
 })
-map("n", "<leader><leader>l", smart_splits.swap_buf_right, {
-	desc = "Swap buffer right",
+map("n", "<C-l>", resize("right", smart_splits.resize_right), {
+	desc = "Resize split or float right",
 })
 
 map("n", "<C-\\>", smart_splits.move_cursor_previous, {
