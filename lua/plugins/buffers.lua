@@ -80,19 +80,6 @@ local function jump_to_group_buffer(index)
 	return show_group_buffer(target)
 end
 
-local function group_buffer_index(buf)
-	local group = workspace_layout.buffer_group(buf)
-	if not group then
-		return nil
-	end
-
-	for index, candidate in ipairs(workspace_layout.list_navigable_group_buffers(group)) do
-		if candidate == buf then
-			return index
-		end
-	end
-end
-
 -- Remove the old cycle bindings when reloading an existing session.
 for _, key in ipairs({ "]b", "[b" }) do
 	pcall(vim.keymap.del, "n", key)
@@ -112,8 +99,10 @@ end, {
 
 for index = 1, 9 do
 	local target_index = index
-	local key = ("<A-%d>"):format(index)
-	pcall(vim.keymap.del, "t", key)
+	local old_key = ("<A-%d>"):format(index)
+	local key = ("<leader>%d"):format(index)
+	pcall(vim.keymap.del, "n", old_key)
+	pcall(vim.keymap.del, "t", old_key)
 	vim.keymap.set("n", key, function()
 		jump_to_group_buffer(target_index)
 	end, {
@@ -137,7 +126,7 @@ require("bufferline").setup({
 		end,
 		custom_filter = function(buf)
 			if vim.b[buf].panel_kind then
-				return true
+				return false
 			end
 
 			return vim.bo[buf].buftype == ""
@@ -145,47 +134,19 @@ require("bufferline").setup({
 				and not workspace_layout.is_empty_code_buffer(buf)
 		end,
 		name_formatter = function(buf)
-			local kind = vim.b[buf.bufnr].panel_kind
-			local index = group_buffer_index(buf.bufnr)
+			local index = workspace_layout.group_buffer_position(buf.bufnr)
 			if not index then
 				return nil
-			end
-
-			if kind == "terminal" then
-				return "T " .. index
-			end
-
-			if kind == "codex" then
-				return "AI " .. index
 			end
 
 			return ("[%d] %s"):format(index, buf.name)
 		end,
 		groups = {
-			options = {
-				toggle_hidden_on_enter = false,
-			},
 			items = {
 				{
-					name = "File",
+					name = "Files",
 					matcher = function(buf)
 						return workspace_layout.buffer_group(buf.id) == "code"
-					end,
-					separator = { style = bufferline_groups.separator.tab },
-				},
-				{
-					name = "Terminal",
-					hidden = true,
-					matcher = function(buf)
-						return workspace_layout.buffer_group(buf.id) == "terminal"
-					end,
-					separator = { style = bufferline_groups.separator.tab },
-				},
-				{
-					name = "AI",
-					hidden = true,
-					matcher = function(buf)
-						return workspace_layout.buffer_group(buf.id) == "codex"
 					end,
 					separator = { style = bufferline_groups.separator.tab },
 				},

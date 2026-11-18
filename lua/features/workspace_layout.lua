@@ -28,7 +28,7 @@ local reflow_scheduled = false
 local reflowing = false
 local route_repair_scheduled = false
 local repairing_routes = false
-local panel_style_version = 2
+local panel_style_version = 3
 
 local function current_tab(tab)
 	if tab and tab ~= 0 then
@@ -200,6 +200,22 @@ function M.list_navigable_group_buffers(group)
 	end
 
 	return result
+end
+
+function M.group_buffer_position(buf)
+	local group = M.buffer_group(buf)
+	if not group then
+		return nil, 0
+	end
+
+	local buffers = M.list_navigable_group_buffers(group)
+	for index, candidate in ipairs(buffers) do
+		if candidate == buf then
+			return index, #buffers
+		end
+	end
+
+	return nil, #buffers
 end
 
 function M.find_group_buffer(group, excluded_buf, listed_only)
@@ -385,7 +401,17 @@ function M.edit_file(path, keep_tree_focus)
 	return true
 end
 
-local function panel_config(kind, code_win, opening)
+local function panel_title(kind, buf)
+	local labels = {
+		terminal = "TERMINAL",
+		codex = "AI",
+	}
+	local index, total = M.group_buffer_position(buf)
+
+	return (" %s %d / %d "):format(labels[kind], index or 0, total)
+end
+
+local function panel_config(kind, code_win, opening, buf)
 	local code_width = vim.api.nvim_win_get_width(code_win)
 	local code_height = vim.api.nvim_win_get_height(code_win)
 	local tab = vim.api.nvim_win_get_tabpage(code_win)
@@ -405,7 +431,8 @@ local function panel_config(kind, code_win, opening)
 
 	if bordered then
 		config.border = "rounded"
-		config.title = ""
+		config.title = panel_title(kind, buf)
+		config.title_pos = "center"
 	end
 
 	if kind == "terminal" then
@@ -461,9 +488,18 @@ function M.open_panel(kind, buf, enter, cwd)
 	state.front_panel[tab] = kind
 	M.mark_panel(kind, buf, cwd or vim.b[buf].panel_cwd)
 
-	local win = vim.api.nvim_open_win(buf, enter ~= false, panel_config(kind, code_win, true))
+	local win = vim.api.nvim_open_win(
+		buf,
+		enter ~= false,
+		panel_config(kind, code_win, true, buf)
+	)
 	set_window_group(win, kind)
 	vim.api.nvim_win_set_var(win, "workspace_panel_style", panel_style_version)
+	vim.api.nvim_win_set_var(
+		win,
+		"workspace_panel_title",
+		panel_title(kind, buf)
+	)
 	vim.wo[win].winblend = 0
 
 	local panel_cwd = vim.b[buf].panel_cwd
@@ -567,6 +603,15 @@ local function config_changed(win, current, wanted)
 		return true
 	end
 
+	local title_ok, title = pcall(
+		vim.api.nvim_win_get_var,
+		win,
+		"workspace_panel_title"
+	)
+	if not title_ok or title ~= (wanted.title or "") then
+		return true
+	end
+
 	for _, key in ipairs({
 		"relative",
 		"win",
@@ -602,7 +647,12 @@ function M.reflow()
 					if is_floating(win)
 						and (kind == "terminal" or kind == "codex")
 					then
-						local wanted = panel_config(kind, code_win, false)
+						local wanted = panel_config(
+							kind,
+							code_win,
+							false,
+							vim.api.nvim_win_get_buf(win)
+						)
 						local current = vim.api.nvim_win_get_config(win)
 
 						if config_changed(win, current, wanted) then
@@ -616,6 +666,11 @@ function M.reflow()
 									win,
 									"workspace_panel_style",
 									panel_style_version
+								)
+								vim.api.nvim_win_set_var(
+									win,
+									"workspace_panel_title",
+									wanted.title or ""
 								)
 							end
 						end

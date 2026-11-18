@@ -142,10 +142,9 @@ local function reset_codex_buffer(buf)
 	end
 
 	local ok, err = pcall(function()
-		vim.api.nvim_chan_send(channel, "/new")
-		vim.cmd("startinsert")
-		local enter = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
-		vim.api.nvim_feedkeys(enter, "n", false)
+		-- Codex uses CSI-u keyboard reporting. A raw <CR> is decoded as
+		-- Ctrl-M (insert newline), while CSI 13 u is an unmodified Enter.
+		vim.api.nvim_chan_send(channel, "/new\27[13u")
 	end)
 	if not ok then
 		vim.notify(tostring(err), vim.log.levels.ERROR)
