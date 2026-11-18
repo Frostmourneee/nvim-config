@@ -44,44 +44,34 @@ map("n", "<leader>w", "<cmd>write<CR>", {
 	desc = "Write buffer",
 })
 
+map("n", "<leader>E", "<cmd>confirm qall<CR>", {
+	desc = "Exit Neovim",
+})
+
 map("n", "<leader>ur", "<cmd>edit<CR>", {
 	desc = "Reload current buffer from disk",
 })
 
-map("n", "<leader>sd", "<cmd>belowright split<CR>", {
-	desc = "Copy current window down",
+map("n", "<leader>R", "<cmd>ReloadConfig<CR>", {
+	desc = "Reload Neovim configuration",
 })
 
-map("n", "<leader>sr", "<cmd>belowright vsplit<CR>", {
-	desc = "Copy current window right",
-})
-
-map("n", "<leader>su", "<cmd>aboveleft split<CR>", {
-	desc = "Copy current window up",
-})
-
-map("n", "<leader>sl", "<cmd>aboveleft vsplit<CR>", {
-	desc = "Copy current window left",
-})
+-- Remove the old free-form split mappings when reloading an existing session.
+for _, key in ipairs({
+	"<leader>sd",
+	"<leader>sr",
+	"<leader>su",
+	"<leader>sl",
+	"<leader>cd",
+	"<leader>cu",
+	"<leader>cr",
+	"<leader>cl",
+}) do
+	pcall(vim.keymap.del, "n", key)
+end
 
 map({ "n", "v" }, "p", "p=']", {
 	desc = "Paste and auto-indent",
-})
-
-map("n", "<leader>cd", "<cmd>belowright horizontal terminal<CR>", {
-	desc = "New terminal down",
-})
-
-map("n", "<leader>cu", "<cmd>aboveleft horizontal terminal<CR>", {
-	desc = "New terminal up",
-})
-
-map("n", "<leader>cr", "<cmd>belowright vertical terminal<CR>", {
-	desc = "New terminal right",
-})
-
-map("n", "<leader>cl", "<cmd>aboveleft vertical terminal<CR>", {
-	desc = "New terminal left",
 })
 
 map({ "i", "t" }, "<A-i>", "<Up>", { desc = "Move up" })

@@ -128,22 +128,30 @@ function M.close_buffer(buf)
 		return false
 	end
 
-	local replacement = find_panel_buffer(kind, buf)
-	local visible_windows = vim.fn.win_findbuf(buf)
-
-	for _, win in ipairs(visible_windows) do
-		if vim.api.nvim_win_is_valid(win) then
-			if replacement then
-				vim.api.nvim_win_set_buf(win, replacement)
-				set_panel_cwd(win, replacement)
-			else
-				vim.api.nvim_win_hide(win)
-			end
-		end
-	end
-
+	workspace_layout.detach_buffer(buf)
 	vim.api.nvim_buf_delete(buf, { force = true })
 	workspace_layout.reflow()
+	return true
+end
+
+local function reset_codex_buffer(buf)
+	local channel = vim.bo[buf].channel
+	if type(channel) ~= "number" or channel <= 0 then
+		vim.notify("Codex terminal is not running", vim.log.levels.ERROR)
+		return false
+	end
+
+	local ok, err = pcall(function()
+		vim.api.nvim_chan_send(channel, "/new")
+		vim.cmd("startinsert")
+		local enter = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+		vim.api.nvim_feedkeys(enter, "n", false)
+	end)
+	if not ok then
+		vim.notify(tostring(err), vim.log.levels.ERROR)
+		return false
+	end
+
 	return true
 end
 
@@ -151,9 +159,7 @@ end
 for _, key in ipairs({
 	"<leader>nt",
 	"<leader>nc",
-	"<leader>hc",
 	"<leader>oc",
-	"<leader>ht",
 	"<leader>ot",
 }) do
 	pcall(vim.keymap.del, "n", key)
@@ -166,6 +172,7 @@ local function close_current_code_buffer()
 			vim.cmd("write")
 		end
 
+		workspace_layout.detach_buffer(buf)
 		require("mini.bufremove").delete(buf, false)
 	end)
 
@@ -175,19 +182,46 @@ local function close_current_code_buffer()
 end
 
 map("n", "<leader>q", function()
-	if vim.b.panel_kind then
+	workspace_layout.repair_buffer_routes()
+	local group = workspace_layout.window_group(vim.api.nvim_get_current_win())
+
+	if group == "codex" then
+		local buf = vim.api.nvim_get_current_buf()
+		if #workspace_layout.list_group_buffers("codex", false) > 1 then
+			M.close_buffer(buf)
+		else
+			reset_codex_buffer(buf)
+		end
+		return
+	end
+
+	if group == "terminal" then
 		M.close_buffer(vim.api.nvim_get_current_buf())
 		return
 	end
 
-	if vim.bo.buftype == "" and vim.bo.filetype ~= "NvimTree" then
+	if group == "code"
+		and workspace_layout.buffer_group(vim.api.nvim_get_current_buf()) == "code"
+	then
 		close_current_code_buffer()
 		return
 	end
 
 	vim.cmd("close")
 end, {
-	desc = "Close buffer/window",
+	desc = "Close buffer/window or reset last Codex buffer",
+})
+
+map("n", "<leader>hc", function()
+	workspace_layout.hide_panel("codex")
+end, {
+	desc = "Hide Codex panel",
+})
+
+map("n", "<leader>ht", function()
+	workspace_layout.hide_panel("terminal")
+end, {
+	desc = "Hide terminal panel",
 })
 
 map("n", "<leader>st", function()
@@ -202,8 +236,11 @@ end, {
 	desc = "Create new Codex buffer",
 })
 
-map("n", "<leader><leader>r", workspace_layout.reset, {
-	desc = "Reset workspace layout",
+map("n", "<leader><leader>r", function()
+	workspace_layout.reset()
+	create_panel("codex")
+end, {
+	desc = "Reset workspace layout and open Codex",
 })
 
 return M
