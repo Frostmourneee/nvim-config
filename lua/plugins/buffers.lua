@@ -99,11 +99,11 @@ end, {
 
 for index = 1, 9 do
 	local target_index = index
-	local old_key = ("<A-%d>"):format(index)
-	local key = ("<leader>%d"):format(index)
+	local old_key = ("<leader>%d"):format(index)
+	local key = ("<A-%d>"):format(index)
 	pcall(vim.keymap.del, "n", old_key)
 	pcall(vim.keymap.del, "t", old_key)
-	vim.keymap.set("n", key, function()
+	vim.keymap.set({ "n", "t" }, key, function()
 		jump_to_group_buffer(target_index)
 	end, {
 		desc = ("Jump to buffer %d in current workspace group"):format(index),
