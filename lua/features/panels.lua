@@ -1,6 +1,118 @@
 local map = vim.keymap.set
+local codex_status = require("features.codex_status")
 local workspace_layout = require("features.workspace_layout")
 local M = {}
+
+local bridge_warning_shown = false
+
+local function warn_bridge(message)
+	if bridge_warning_shown then
+		return
+	end
+
+	bridge_warning_shown = true
+	vim.notify(message, vim.log.levels.WARN)
+end
+
+local function rpc_server()
+	if type(vim.v.servername) == "string" and vim.v.servername ~= "" then
+		return vim.v.servername
+	end
+
+	local ok, address = pcall(vim.fn.serverstart)
+	if ok and type(address) == "string" and address ~= "" then
+		return address
+	end
+
+	warn_bridge("Codex status bridge unavailable: Neovim RPC server failed")
+end
+
+local function nvim_client()
+	for _, candidate in ipairs({
+		vim.v.progpath,
+		vim.fn.exepath("nvim"),
+	}) do
+		if type(candidate) == "string"
+			and candidate ~= ""
+			and vim.fn.executable(candidate) == 1
+		then
+			return candidate
+		end
+	end
+
+	warn_bridge("Codex status bridge unavailable: Neovim client not found")
+end
+
+local function new_codex_instance(buf)
+	local uv = vim.uv or vim.loop
+	return ("%d:%d:%s"):format(
+		vim.fn.getpid(),
+		buf,
+		tostring(uv.hrtime())
+	)
+end
+
+local function codex_bridge_env(buf, instance)
+	local server = rpc_server()
+	local client = nvim_client()
+	if not server or not client then
+		return nil
+	end
+
+	return {
+		NVIM_CODEX_STATUS_BRIDGE = "1",
+		NVIM_CODEX_SERVER = server,
+		NVIM_CODEX_BUFFER = tostring(buf),
+		NVIM_CODEX_INSTANCE = instance,
+		NVIM_CODEX_CLIENT = client,
+	}
+end
+
+local function start_codex(buf, cwd)
+	vim.bo[buf].buflisted = true
+	local instance = new_codex_instance(buf)
+	if not codex_status.bind(buf, instance) then
+		vim.notify("Failed to initialize Codex status", vim.log.levels.ERROR)
+		return false
+	end
+
+	local options = {
+		cwd = cwd,
+		term = true,
+		on_exit = function()
+			vim.schedule(function()
+				if vim.api.nvim_buf_is_valid(buf)
+					and vim.b[buf].codex_status_instance == instance
+				then
+					codex_status.set(buf, "idle")
+				end
+			end)
+		end,
+	}
+	local env = codex_bridge_env(buf, instance)
+	if env then
+		options.env = env
+	end
+
+	local ok, job = pcall(
+		vim.fn.jobstart,
+		{
+			"codex",
+			"--profile",
+			"nvim",
+			"--approve-for-me",
+			"--no-alt-screen",
+		},
+		options
+	)
+
+	if not ok or type(job) ~= "number" or job <= 0 then
+		vim.notify("Failed to start Codex terminal", vim.log.levels.ERROR)
+		return false
+	end
+
+	return true
+end
 
 local function find_panel_buffer(kind, excluded_buf)
 	local buffers = vim.api.nvim_list_bufs()
@@ -59,15 +171,24 @@ local function create_new_panel_buffer(kind)
 		return false
 	end
 
+	local started = true
 	vim.api.nvim_win_call(win, function()
 		vim.cmd("lcd " .. vim.fn.fnameescape(cwd))
 
 		if kind == "codex" then
-			vim.cmd("terminal codex --approve-for-me --no-alt-screen")
+			started = start_codex(scratch, cwd)
 		else
 			vim.cmd("terminal")
 		end
 	end)
+	if not started then
+		workspace_layout.detach_buffer(scratch)
+		if vim.api.nvim_buf_is_valid(scratch) then
+			pcall(vim.api.nvim_buf_delete, scratch, { force = true })
+		end
+		workspace_layout.reflow()
+		return false
+	end
 
 	local buf = vim.api.nvim_win_get_buf(win)
 	workspace_layout.mark_panel(kind, buf, cwd)

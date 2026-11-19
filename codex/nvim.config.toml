@@ -1,0 +1,60 @@
+# Loaded only when Codex is started with `--profile nvim`.
+# These hooks observe lifecycle events; async hooks cannot control the turn.
+
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = "/usr/bin/python3 /home/frostmourneee/.config/nvim/codex/status_hook.py"
+async = true
+timeout = 2
+
+[[hooks.PermissionRequest]]
+
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = "/usr/bin/python3 /home/frostmourneee/.config/nvim/codex/status_hook.py"
+async = true
+timeout = 2
+
+[[hooks.PostToolUse]]
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "/usr/bin/python3 /home/frostmourneee/.config/nvim/codex/status_hook.py"
+async = true
+timeout = 2
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/usr/bin/python3 /home/frostmourneee/.config/nvim/codex/status_hook.py"
+async = true
+timeout = 2
+
+[[hooks.Interrupt]]
+
+[[hooks.Interrupt.hooks]]
+type = "command"
+command = "/usr/bin/python3 /home/frostmourneee/.config/nvim/codex/status_hook.py"
+async = true
+timeout = 2
+
+[hooks.state]
+
+[hooks.state."/home/frostmourneee/.codex/nvim.config.toml:permission_request:0:0"]
+trusted_hash = "sha256:2cc987d7a1d534fbf77b4c32e0740b274b8c5d41ed5b6379129870aabd7ac146"
+enabled = true
+
+[hooks.state."/home/frostmourneee/.codex/nvim.config.toml:post_tool_use:0:0"]
+trusted_hash = "sha256:7ddee1bb9121b04153aed70ffb0525988558879d7c8a8afb7243079277ae88bc"
+
+[hooks.state."/home/frostmourneee/.codex/nvim.config.toml:user_prompt_submit:0:0"]
+trusted_hash = "sha256:c2d5208f49cdba9b3b64c7cacb8aa2cb6377a63126cf18084749020c2e88418d"
+
+[hooks.state."/home/frostmourneee/.codex/nvim.config.toml:stop:0:0"]
+trusted_hash = "sha256:d42383369934b303fd151609be4542c0ea60596107f0a0fd59b7d822b3912afd"
+
+[hooks.state."/home/frostmourneee/.codex/nvim.config.toml:interrupt:0:0"]
+trusted_hash = "sha256:312504e1a880d464fc1947075bc097d8c16873f71ae60cb71f8293102e7478af"

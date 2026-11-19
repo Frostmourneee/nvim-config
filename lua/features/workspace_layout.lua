@@ -1,3 +1,4 @@
+local codex_status = require("features.codex_status")
 local M = {}
 
 M.defaults = {
@@ -28,7 +29,7 @@ local reflow_scheduled = false
 local reflowing = false
 local route_repair_scheduled = false
 local repairing_routes = false
-local panel_style_version = 3
+local panel_style_version = 4
 
 local function current_tab(tab)
 	if tab and tab ~= 0 then
@@ -402,9 +403,15 @@ function M.edit_file(path, keep_tree_focus)
 end
 
 local function panel_title(kind, buf)
+	if kind == "codex" then
+		return codex_status.title(
+			M.list_navigable_group_buffers("codex"),
+			buf
+		)
+	end
+
 	local labels = {
 		terminal = "TERMINAL",
-		codex = "AI",
 	}
 	local index, total = M.group_buffer_position(buf)
 
@@ -608,7 +615,7 @@ local function config_changed(win, current, wanted)
 		win,
 		"workspace_panel_title"
 	)
-	if not title_ok or title ~= (wanted.title or "") then
+	if not title_ok or not vim.deep_equal(title, wanted.title or "") then
 		return true
 	end
 
@@ -855,6 +862,10 @@ vim.api.nvim_create_autocmd("WinEnter", {
 		M.schedule_route_repair()
 		M.schedule_reflow()
 	end,
+})
+
+codex_status.setup({
+	refresh = M.schedule_reflow,
 })
 
 return M
