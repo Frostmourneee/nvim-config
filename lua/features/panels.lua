@@ -263,9 +263,10 @@ local function reset_codex_buffer(buf)
 	end
 
 	local ok, err = pcall(function()
-		-- Codex uses CSI-u keyboard reporting. A raw <CR> is decoded as
-		-- Ctrl-M (insert newline), while CSI 13 u is an unmodified Enter.
-		vim.api.nvim_chan_send(channel, "/new\27[13u")
+		-- Mark /new as an explicit paste so Codex does not classify the rapid
+		-- input as a paste burst, where the following Enter inserts a newline.
+		-- CSI 13 u is then decoded as an unmodified Enter and submits it.
+		vim.api.nvim_chan_send(channel, "\27[200~/new\27[201~\27[13u")
 	end)
 	if not ok then
 		vim.notify(tostring(err), vim.log.levels.ERROR)
