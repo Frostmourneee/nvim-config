@@ -1,4 +1,5 @@
 local M = {}
+local workspace_layout = require("features.workspace_layout")
 
 local state_key = "__config_tree_workspace_state"
 
@@ -9,6 +10,45 @@ end
 local function set_state(state)
 	rawset(vim, state_key, state)
 end
+
+local function code_buffer_snapshot()
+	local result = {}
+
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buf)
+			and workspace_layout.buffer_group(buf) == "code"
+		then
+			result[buf] = true
+		end
+	end
+
+	return result
+end
+
+local function track_workspace_buffer(buf)
+	local state = get_state()
+	if not state
+		or not state.workspace_tab
+		or not vim.api.nvim_tabpage_is_valid(state.workspace_tab)
+		or vim.api.nvim_get_current_tabpage() ~= state.workspace_tab
+	then
+		return
+	end
+
+	state.workspace_buffers = state.workspace_buffers or {}
+	state.workspace_buffers[buf] = true
+end
+
+local tracking_group = vim.api.nvim_create_augroup("ConfigTreeWorkspaceBuffers", {
+	clear = true,
+})
+
+vim.api.nvim_create_autocmd({ "BufAdd", "BufEnter", "BufWinEnter" }, {
+	group = tracking_group,
+	callback = function(args)
+		track_workspace_buffer(args.buf)
+	end,
+})
 
 local function same_path(left, right)
 	if not left or not right then
@@ -64,10 +104,14 @@ end
 local function open_workspace(options)
 	local api = require("nvim-tree.api")
 	local state = snapshot()
+	state.initial_code_buffers = code_buffer_snapshot()
 
 	vim.cmd("tabnew")
 	state.workspace_tab = vim.api.nvim_get_current_tabpage()
 	state.workspace_id = options.id
+	state.workspace_buffers = {
+		[vim.api.nvim_get_current_buf()] = true,
+	}
 	set_state(state)
 
 	api.tree.open({ path = options.root })
@@ -114,6 +158,40 @@ local function close_workspace_tab(state)
 	end
 
 	return true
+end
+
+local function close_workspace_code_buffers(state)
+	if type(state.workspace_buffers) ~= "table"
+		or type(state.initial_code_buffers) ~= "table"
+	then
+		return
+	end
+
+	local preserved = {}
+
+	for buf in pairs(state.workspace_buffers) do
+		if not state.initial_code_buffers[buf]
+			and vim.api.nvim_buf_is_valid(buf)
+			and workspace_layout.buffer_group(buf) == "code"
+		then
+			local name = vim.api.nvim_buf_get_name(buf)
+			if name == "" then
+				name = "[No Name]"
+			end
+
+			local ok, err = pcall(vim.api.nvim_buf_delete, buf, { force = false })
+			if not ok and vim.api.nvim_buf_is_valid(buf) then
+				table.insert(preserved, name .. ": " .. tostring(err))
+			end
+		end
+	end
+
+	if #preserved > 0 then
+		vim.notify(
+			"Some temporary code buffers were preserved:\n" .. table.concat(preserved, "\n"),
+			vim.log.levels.WARN
+		)
+	end
 end
 
 local function restore_open_directories(api, paths)
@@ -189,6 +267,7 @@ local function toggle(options)
 		return
 	end
 
+	close_workspace_code_buffers(state)
 	set_state(nil)
 	restore_workspace(state)
 

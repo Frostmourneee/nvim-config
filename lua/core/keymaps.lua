@@ -33,7 +33,7 @@ map("n", "<leader>a", "<cmd>%y<CR>", {
 map("n", "<C-A-s>", function()
 	require("features.config_tree").toggle()
 end, {
-	desc = "Toggle Neovim settings workspace",
+	desc = "Toggle temporary Neovim settings workspace",
 })
 
 map("t", "<Esc>", "<C-\\><C-n>", {
