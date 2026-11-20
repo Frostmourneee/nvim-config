@@ -1,7 +1,10 @@
 local M = {}
+local panels = require("features.panels")
 local workspace_layout = require("features.workspace_layout")
 
 local state_key = "__config_tree_workspace_state"
+local panel_kinds = { "terminal", "codex" }
+local restore_panels
 
 local function get_state()
 	return rawget(vim, state_key)
@@ -78,6 +81,36 @@ local function tree_width()
 	end
 end
 
+local function panel_snapshot(tab, current_win)
+	local result = {}
+	local front_zindex = -1
+
+	for _, kind in ipairs(panel_kinds) do
+		local win = workspace_layout.find_panel_window(kind, tab)
+		if win then
+			local config = vim.api.nvim_win_get_config(win)
+			local zindex = config.zindex or 0
+			result[kind] = {
+				visible = true,
+				buffer = vim.api.nvim_win_get_buf(win),
+			}
+
+			if zindex > front_zindex then
+				front_zindex = zindex
+				result.front = kind
+			end
+
+			if win == current_win then
+				result.focused = kind
+			end
+		else
+			result[kind] = { visible = false }
+		end
+	end
+
+	return result
+end
+
 local function snapshot()
 	local api = require("nvim-tree.api")
 	local core = require("nvim-tree.core")
@@ -89,6 +122,9 @@ local function snapshot()
 
 	local selected = visible and api.tree.get_node_under_cursor() or nil
 
+	local origin_tab = vim.api.nvim_get_current_tabpage()
+	local origin_win = vim.api.nvim_get_current_win()
+
 	return {
 		root = core.get_cwd() or vim.fn.getcwd(),
 		cwd = vim.fn.getcwd(),
@@ -96,8 +132,9 @@ local function snapshot()
 		width = tree_width(),
 		open_directories = open_directories,
 		selected_path = selected and selected.absolute_path or nil,
-		origin_tab = vim.api.nvim_get_current_tabpage(),
-		origin_win = vim.api.nvim_get_current_win(),
+		origin_tab = origin_tab,
+		origin_win = origin_win,
+		panels = panel_snapshot(origin_tab, origin_win),
 	}
 end
 
@@ -131,6 +168,12 @@ local function open_workspace(options)
 
 	if state.width then
 		api.tree.resize({ absolute = state.width })
+	end
+
+	local workspace_win = vim.api.nvim_get_current_win()
+	restore_panels(state, state.workspace_tab)
+	if vim.api.nvim_win_is_valid(workspace_win) then
+		vim.api.nvim_set_current_win(workspace_win)
 	end
 end
 
@@ -214,6 +257,32 @@ local function restore_open_directories(api, paths)
 	end
 end
 
+restore_panels = function(state, tab)
+	if type(state.panels) ~= "table" then
+		return
+	end
+	tab = tab or state.origin_tab
+
+	for _, kind in ipairs(panel_kinds) do
+		local saved = state.panels[kind]
+		local win = workspace_layout.find_panel_window(kind, tab)
+
+		if saved and saved.visible
+			and saved.buffer
+			and vim.api.nvim_buf_is_valid(saved.buffer)
+		then
+			panels.show_buffer(saved.buffer)
+		elseif saved and not saved.visible and win then
+			workspace_layout.hide_panel(kind)
+		end
+	end
+
+	local front = state.panels.front
+	if front and workspace_layout.find_panel_window(front, tab) then
+		workspace_layout.focus_panel(front)
+	end
+end
+
 local function restore_workspace(state)
 	local api = require("nvim-tree.api")
 	local root = state.root
@@ -250,7 +319,14 @@ local function restore_workspace(state)
 		api.tree.close()
 	end
 
-	if state.origin_win and vim.api.nvim_win_is_valid(state.origin_win) then
+	restore_panels(state)
+
+	local focused_panel = state.panels and state.panels.focused
+	if focused_panel
+		and workspace_layout.find_panel_window(focused_panel, state.origin_tab)
+	then
+		workspace_layout.focus_panel(focused_panel)
+	elseif state.origin_win and vim.api.nvim_win_is_valid(state.origin_win) then
 		vim.api.nvim_set_current_win(state.origin_win)
 	end
 end

@@ -126,5 +126,5 @@ vim.keymap.set("n", "<leader>os", function()
 	require("features.config_tree").toggle_skills()
 end, {
 	silent = true,
-	desc = "Toggle temporary Codex skills workspace",
+	desc = "Toggle temporary Codex skills workspace and preserve panels",
 })
