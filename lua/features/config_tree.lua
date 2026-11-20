@@ -128,7 +128,7 @@ local function snapshot()
 
 	return {
 		root = core.get_cwd() or vim.fn.getcwd(),
-		cwd = vim.fn.getcwd(),
+		cwd = vim.fn.getcwd(-1, -1),
 		visible = visible,
 		width = tree_width(),
 		open_directories = open_directories,

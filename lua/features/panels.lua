@@ -152,8 +152,19 @@ local function open_existing_panel(kind)
 	return workspace_layout.open_panel(kind, buf, true, vim.b[buf].panel_cwd) ~= nil
 end
 
+local function tree_cwd()
+	local ok, core = pcall(require, "nvim-tree.core")
+	local cwd = ok and core.get_cwd() or nil
+
+	if cwd and vim.fn.isdirectory(cwd) == 1 then
+		return cwd
+	end
+
+	return vim.fn.getcwd(-1, -1)
+end
+
 local function create_new_panel_buffer(kind)
-	local cwd = vim.fn.getcwd()
+	local cwd = tree_cwd()
 	local scratch = vim.api.nvim_create_buf(false, true)
 	local win = workspace_layout.find_panel_window(kind)
 
