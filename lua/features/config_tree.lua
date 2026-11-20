@@ -19,6 +19,7 @@ local function code_buffer_snapshot()
 
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		if vim.api.nvim_buf_is_valid(buf)
+			and vim.bo[buf].buflisted
 			and workspace_layout.buffer_group(buf) == "code"
 		then
 			result[buf] = true
