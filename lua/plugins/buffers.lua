@@ -80,6 +80,28 @@ local function jump_to_group_buffer(index)
 	return show_group_buffer(target)
 end
 
+local function create_temporary_text_buffer()
+	local used_names = {}
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buf) then
+			local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t")
+			used_names[name] = true
+		end
+	end
+
+	local index = 1
+	while used_names[("tmp%d.txt"):format(index)] do
+		index = index + 1
+	end
+
+	local buf = vim.api.nvim_create_buf(true, false)
+	vim.api.nvim_buf_set_name(buf, ("tmp%d.txt"):format(index))
+	vim.b[buf].temporary_text_buffer = true
+	vim.bo[buf].filetype = "text"
+	vim.bo[buf].swapfile = false
+	workspace_layout.show_code_buffer(buf)
+end
+
 -- Remove the old cycle bindings when reloading an existing session.
 for _, key in ipairs({ "]b", "[b" }) do
 	pcall(vim.keymap.del, "n", key)
@@ -95,6 +117,10 @@ vim.keymap.set("n", "<leader>N", function()
 	cycle_group_buffer(-1)
 end, {
 	desc = "Previous buffer in current workspace group",
+})
+
+vim.keymap.set("n", "<leader>sn", create_temporary_text_buffer, {
+	desc = "Create temporary text buffer",
 })
 
 for index = 1, 9 do

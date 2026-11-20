@@ -288,13 +288,17 @@ end
 
 local function close_current_code_buffer()
 	local buf = vim.api.nvim_get_current_buf()
+	local is_temporary = vim.b[buf].temporary_text_buffer == true
 	local ok, err = pcall(function()
-		if vim.bo[buf].modifiable and vim.bo[buf].modified then
+		if not is_temporary
+			and vim.bo[buf].modifiable
+			and vim.bo[buf].modified
+		then
 			vim.cmd("write")
 		end
 
 		workspace_layout.detach_buffer(buf)
-		require("mini.bufremove").delete(buf, false)
+		require("mini.bufremove").delete(buf, is_temporary)
 	end)
 
 	if not ok then

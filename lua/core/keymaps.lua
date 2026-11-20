@@ -44,8 +44,30 @@ map("n", "<leader>w", "<cmd>write<CR>", {
 	desc = "Write buffer",
 })
 
-map("n", "<leader>E", "<cmd>confirm qall<CR>", {
-	desc = "Exit Neovim",
+map("n", "<leader>E", function()
+	local modified_temporary_buffers = {}
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buf)
+			and vim.b[buf].temporary_text_buffer == true
+			and vim.bo[buf].modified
+		then
+			table.insert(modified_temporary_buffers, buf)
+			vim.bo[buf].modified = false
+		end
+	end
+
+	local ok, err = pcall(vim.cmd, "confirm qall")
+	for _, buf in ipairs(modified_temporary_buffers) do
+		if vim.api.nvim_buf_is_valid(buf) then
+			vim.bo[buf].modified = true
+		end
+	end
+
+	if not ok then
+		vim.notify(tostring(err), vim.log.levels.ERROR)
+	end
+end, {
+	desc = "Exit Neovim without saving temporary text buffers",
 })
 
 map("n", "<leader>ur", "<cmd>edit<CR>", {
