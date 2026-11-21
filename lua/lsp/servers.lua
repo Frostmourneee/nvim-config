@@ -6,6 +6,21 @@ vim.lsp.config("gopls", {
 
 vim.lsp.config("pyright", {
 	capabilities = capabilities,
+
+	before_init = function(_, config)
+		if not config.root_dir then
+			return
+		end
+
+		local python = config.root_dir .. "/.venv/bin/python"
+		if vim.uv.fs_stat(python) then
+			config.settings = vim.tbl_deep_extend("force", config.settings or {}, {
+				python = {
+					pythonPath = python,
+				},
+			})
+		end
+	end,
 })
 
 vim.lsp.config("ruff", {

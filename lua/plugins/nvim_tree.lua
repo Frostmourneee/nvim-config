@@ -20,6 +20,11 @@ require("nvim-tree").setup({
 			enable = true,
 			global = true,
 		},
+		remove_file = {
+			-- The code window is the anchor for the workspace and its floats.
+			-- Let Neovim replace a deleted buffer instead of closing the window.
+			close_window = false,
+		},
 
 		open_file = {
 			resize_window = false,

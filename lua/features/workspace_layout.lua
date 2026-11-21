@@ -29,6 +29,7 @@ local reflow_scheduled = false
 local reflowing = false
 local route_repair_scheduled = false
 local repairing_routes = false
+local code_window_repair_scheduled = false
 local panel_style_version = 4
 
 local function current_tab(tab)
@@ -349,6 +350,27 @@ function M.ensure_code_window(tab)
 	set_window_group(code_win, "code")
 	state.code_windows[tab] = code_win
 	return code_win
+end
+
+function M.schedule_code_window_repair()
+	if code_window_repair_scheduled then
+		return
+	end
+
+	code_window_repair_scheduled = true
+	vim.schedule(function()
+		code_window_repair_scheduled = false
+		if vim.v.exiting ~= vim.NIL then
+			return
+		end
+
+		local tab = vim.api.nvim_get_current_tabpage()
+		if vim.api.nvim_tabpage_is_valid(tab) then
+			M.ensure_code_window(tab)
+			M.repair_buffer_routes()
+			M.reflow()
+		end
+	end)
 end
 
 function M.show_code_buffer(buf)
@@ -841,9 +863,47 @@ vim.api.nvim_create_autocmd({
 	"WinResized",
 }, {
 	group = layout_group,
-	callback = function()
+	callback = function(args)
+		if args.event == "TabEnter" or args.event == "WinClosed" then
+			M.schedule_code_window_repair()
+		end
 		M.schedule_route_repair()
 		M.schedule_reflow()
+	end,
+})
+
+vim.api.nvim_create_autocmd("FileChangedShell", {
+	group = layout_group,
+	callback = function(args)
+		local buf = args.buf
+		if vim.v.fcs_reason ~= "deleted"
+			or not vim.api.nvim_buf_is_valid(buf)
+			or M.buffer_group(buf) ~= "code"
+			or vim.bo[buf].modified
+		then
+			vim.v.fcs_choice = "ask"
+			return
+		end
+
+		-- Buffer changes are forbidden during FileChangedShell. Replace the
+		-- deleted file after the event, keeping the code window itself alive.
+		vim.v.fcs_choice = ""
+		vim.schedule(function()
+			if not vim.api.nvim_buf_is_valid(buf)
+				or vim.bo[buf].modified
+			then
+				return
+			end
+
+			local path = vim.api.nvim_buf_get_name(buf)
+			if path == "" or vim.uv.fs_stat(path) then
+				return
+			end
+
+			M.detach_buffer(buf)
+			pcall(vim.api.nvim_buf_delete, buf, { force = true })
+			M.schedule_code_window_repair()
+		end)
 	end,
 })
 
@@ -851,12 +911,18 @@ vim.api.nvim_create_autocmd("WinEnter", {
 	group = layout_group,
 	callback = function()
 		local win = vim.api.nvim_get_current_win()
+		local buf = vim.api.nvim_win_get_buf(win)
 		local kind = stored_window_group(win)
 		if not kind and is_floating(win) then
 			kind = M.window_group(win)
 		end
 		if kind == "terminal" or kind == "codex" then
 			state.front_panel[vim.api.nvim_get_current_tabpage()] = kind
+		end
+		if M.buffer_group(buf) == "code"
+			and vim.api.nvim_buf_get_name(buf) ~= ""
+		then
+			pcall(vim.cmd, "checktime " .. buf)
 		end
 
 		M.schedule_route_repair()
