@@ -1,5 +1,17 @@
 local map = vim.keymap.set
 
+-- Preserve Neovim's built-in gx callback across configuration reloads.
+if type(_G.__default_gx_callback) ~= "function" then
+	local default_gx = vim.fn.maparg("gx", "n", false, true)
+	_G.__default_gx_callback = default_gx.callback
+end
+
+map("n", "gx", function()
+	require("features.smart_open").open(_G.__default_gx_callback)
+end, {
+	desc = "Open URI normally or Codex file in central code pane",
+})
+
 map("n", "<Esc>", function()
 	vim.cmd("nohlsearch")
 	vim.lsp.buf.clear_references()

@@ -1,4 +1,5 @@
 binding; description
+gx; Open web URI with system handler, or open Codex-answer file in central code pane [Normal]
 <Esc>; Clear search and LSP highlights [Normal]
 <leader>sy; Search for yanked text [Normal]
 <leader>a; Copy whole file [Normal]
