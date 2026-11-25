@@ -35,6 +35,19 @@ for _, key in ipairs({
 	pcall(vim.keymap.del, "n", key)
 end
 
+map("n", "<leader><leader>i", smart_splits.move_cursor_up, {
+	desc = "Move to window above",
+})
+map("n", "<leader><leader>j", smart_splits.move_cursor_left, {
+	desc = "Move to window on the left",
+})
+map("n", "<leader><leader>k", smart_splits.move_cursor_down, {
+	desc = "Move to window below",
+})
+map("n", "<leader><leader>l", smart_splits.move_cursor_right, {
+	desc = "Move to window on the right",
+})
+
 map("n", "<leader>i", function()
 	workspace_layout.focus_area("code")
 end, {
