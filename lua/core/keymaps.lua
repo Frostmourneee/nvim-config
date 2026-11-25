@@ -56,6 +56,18 @@ map("n", "<leader>w", "<cmd>write<CR>", {
 	desc = "Write buffer",
 })
 
+map("n", "<leader>tw", function()
+	local enabled = not vim.wo.wrap
+
+	vim.wo.wrap = enabled
+	vim.wo.linebreak = enabled
+	vim.wo.breakindent = enabled
+
+	vim.notify("Line wrapping " .. (enabled and "enabled" or "disabled"))
+end, {
+	desc = "Toggle line wrapping in current window",
+})
+
 map("n", "<leader>E", function()
 	local modified_temporary_buffers = {}
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do

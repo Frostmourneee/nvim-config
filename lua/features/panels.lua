@@ -5,6 +5,19 @@ local M = {}
 
 local bridge_warning_shown = false
 
+local function strip_codex_ui_margin(line)
+	if line:sub(1, 2) == "  " then
+		return line:sub(3)
+	end
+
+	local bullet_margin = "• "
+	if line:sub(1, #bullet_margin) == bullet_margin then
+		return line:sub(#bullet_margin + 1)
+	end
+
+	return line
+end
+
 local function warn_bridge(message)
 	if bridge_warning_shown then
 		return
@@ -70,6 +83,17 @@ end
 
 local function start_codex(buf, cwd)
 	vim.bo[buf].buflisted = true
+	map("n", "yy", function()
+		local row = vim.api.nvim_win_get_cursor(0)[1]
+		local lines = vim.api.nvim_buf_get_lines(buf, row - 1, row - 1 + vim.v.count1, false)
+		for index, line in ipairs(lines) do
+			lines[index] = strip_codex_ui_margin(line)
+		end
+		for _, register in ipairs({ '"', "0", "+" }) do
+			vim.fn.setreg(register, lines, "V")
+		end
+	end, { buffer = buf, desc = "Yank Codex lines without UI margin" })
+
 	local instance = new_codex_instance(buf)
 	if not codex_status.bind(buf, instance) then
 		vim.notify("Failed to initialize Codex status", vim.log.levels.ERROR)
@@ -115,17 +139,12 @@ local function start_codex(buf, cwd)
 end
 
 local function find_panel_buffer(kind, excluded_buf)
-	local buffers = vim.api.nvim_list_bufs()
-
-	for index = #buffers, 1, -1 do
-		local buf = buffers[index]
-		if buf ~= excluded_buf
-			and vim.api.nvim_buf_is_valid(buf)
-			and vim.b[buf].panel_kind == kind
-		then
-			return buf
-		end
+	local remembered = workspace_layout.remembered_panel_buffer(kind)
+	if remembered and remembered ~= excluded_buf then
+		return remembered
 	end
+
+	return workspace_layout.find_group_buffer(kind, excluded_buf, false)
 end
 
 local function set_panel_cwd(win, buf)

@@ -372,6 +372,19 @@ function M.title(buffers, current_buf)
 	local result = {
 		{ " ", "FloatTitle" },
 	}
+	local dictation = rawget(vim, "__voice_dictation_state")
+	if type(dictation) == "table"
+		and (dictation.phase == "recording" or dictation.phase == "transcribing")
+	then
+		local highlight = dictation.phase == "recording"
+			and "CodexDictationRecording"
+			or "CodexDictationTranscribing"
+		table.insert(result, {
+			dictation.blink_visible and "■" or " ",
+			highlight,
+		})
+		table.insert(result, { " ", "FloatTitle" })
+	end
 
 	for index, buf in ipairs(buffers) do
 		local value = read_state(buf)

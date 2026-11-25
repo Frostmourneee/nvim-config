@@ -16,6 +16,7 @@ if not state then
 		codex_width = M.defaults.codex_width,
 		code_windows = {},
 		front_panel = {},
+		panel_buffers = {},
 	}
 	rawset(vim, state_key, state)
 else
@@ -23,6 +24,7 @@ else
 	state.codex_width = state.codex_width or M.defaults.codex_width
 	state.code_windows = state.code_windows or {}
 	state.front_panel = state.front_panel or {}
+	state.panel_buffers = state.panel_buffers or {}
 end
 
 local reflow_scheduled = false
@@ -38,6 +40,12 @@ local function current_tab(tab)
 	end
 
 	return vim.api.nvim_get_current_tabpage()
+end
+
+local function remember_panel_buffer(kind, buf, tab)
+	tab = current_tab(tab)
+	state.panel_buffers[tab] = state.panel_buffers[tab] or {}
+	state.panel_buffers[tab][kind] = buf
 end
 
 local function is_floating(win)
@@ -507,6 +515,23 @@ function M.find_panel_window(kind, tab)
 	end
 end
 
+function M.remembered_panel_buffer(kind, tab)
+	tab = current_tab(tab)
+	local remembered = state.panel_buffers[tab]
+		and state.panel_buffers[tab][kind]
+
+	if remembered
+		and vim.api.nvim_buf_is_valid(remembered)
+		and panel_kind(remembered) == kind
+	then
+		return remembered
+	end
+
+	if state.panel_buffers[tab] then
+		state.panel_buffers[tab][kind] = nil
+	end
+end
+
 function M.open_panel(kind, buf, enter, cwd)
 	local code_win = M.ensure_code_window()
 	if not code_win then
@@ -522,6 +547,7 @@ function M.open_panel(kind, buf, enter, cwd)
 		enter ~= false,
 		panel_config(kind, code_win, true, buf)
 	)
+	remember_panel_buffer(kind, buf, tab)
 	set_window_group(win, kind)
 	vim.api.nvim_win_set_var(win, "workspace_panel_style", panel_style_version)
 	vim.api.nvim_win_set_var(
@@ -552,6 +578,7 @@ function M.focus_panel(kind)
 
 	local tab = vim.api.nvim_win_get_tabpage(win)
 	state.front_panel[tab] = kind
+	remember_panel_buffer(kind, vim.api.nvim_win_get_buf(win), tab)
 	vim.api.nvim_set_current_win(win)
 	M.reflow()
 	return true
@@ -563,6 +590,11 @@ function M.hide_panel(kind)
 		return false
 	end
 
+	remember_panel_buffer(
+		kind,
+		vim.api.nvim_win_get_buf(win),
+		vim.api.nvim_win_get_tabpage(win)
+	)
 	vim.api.nvim_win_hide(win)
 	return true
 end
@@ -917,7 +949,9 @@ vim.api.nvim_create_autocmd("WinEnter", {
 			kind = M.window_group(win)
 		end
 		if kind == "terminal" or kind == "codex" then
-			state.front_panel[vim.api.nvim_get_current_tabpage()] = kind
+			local tab = vim.api.nvim_get_current_tabpage()
+			state.front_panel[tab] = kind
+			remember_panel_buffer(kind, buf, tab)
 		end
 		if M.buffer_group(buf) == "code"
 			and vim.api.nvim_buf_get_name(buf) ~= ""

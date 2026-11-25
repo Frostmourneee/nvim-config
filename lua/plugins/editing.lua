@@ -13,6 +13,7 @@ vim.api.nvim_create_autocmd("FileType", {
 		"gosum",
 		"gowork",
 		"python",
+		"markdown",
 	},
 	callback = function()
 		vim.treesitter.start()

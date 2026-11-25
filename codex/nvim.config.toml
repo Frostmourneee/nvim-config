@@ -1,3 +1,5 @@
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
 # Loaded only when Codex is started with `--profile nvim`.
 # These hooks observe lifecycle events; async hooks cannot control the turn.
 
@@ -58,3 +60,6 @@ trusted_hash = "sha256:d42383369934b303fd151609be4542c0ea60596107f0a0fd59b7d822b
 
 [hooks.state."/home/frostmourneee/.codex/nvim.config.toml:interrupt:0:0"]
 trusted_hash = "sha256:312504e1a880d464fc1947075bc097d8c16873f71ae60cb71f8293102e7478af"
+
+[notice.model_migrations]
+"gpt-5.6-sol" = "gpt-6.2-sol"

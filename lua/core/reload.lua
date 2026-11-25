@@ -7,6 +7,7 @@ local config_modules = {
 	"features.panels",
 	"features.config_tree",
 	"features.codex_navigation",
+	"features.voice_dictation",
 	"packages",
 	"plugins.editing",
 	"plugins.buffers",
