@@ -1,9 +1,7 @@
 local M = {}
 
 local client_prefix = {
-	"/home/frostmourneee/Progs/Experiments/whisper-local-ASR/.venv/bin/python",
-	"-m",
-	"whisper_local_asr.client",
+	"whisper-local-asr-client",
 }
 
 local state_key = "__voice_dictation_state"
