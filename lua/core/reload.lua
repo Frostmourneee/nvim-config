@@ -3,6 +3,7 @@ local config_modules = {
 	"core.keymaps",
 	"core.neovide",
 	"features.codex_status",
+	"features.terminal_commands",
 	"features.workspace_layout",
 	"features.panels",
 	"features.config_tree",

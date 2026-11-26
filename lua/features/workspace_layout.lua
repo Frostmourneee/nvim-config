@@ -17,6 +17,7 @@ if not state then
 		code_windows = {},
 		front_panel = {},
 		panel_buffers = {},
+		terminal_expansion = nil,
 	}
 	rawset(vim, state_key, state)
 else
@@ -473,8 +474,16 @@ local function panel_config(kind, code_win, opening, buf)
 	end
 
 	if kind == "terminal" then
+		local wanted_height = state.terminal_height
+		if state.terminal_expansion then
+			if state.terminal_expansion.mode == "full" then
+				wanted_height = code_height
+			elseif state.terminal_expansion.mode == "smart" then
+				wanted_height = state.terminal_expansion.height
+			end
+		end
 		local outer_height = clamp(
-			state.terminal_height,
+			wanted_height,
 			bordered and 3 or 1,
 			code_height
 		)
@@ -819,6 +828,17 @@ function M.resize_managed_float(direction, amount)
 	state.front_panel[tab] = kind
 
 	if kind == "terminal" then
+		if state.terminal_expansion then
+			if state.terminal_expansion.mode == "full" then
+				state.terminal_height = code_win
+					and vim.api.nvim_win_get_height(code_win)
+					or state.terminal_height
+			elseif state.terminal_expansion.mode == "smart" then
+				state.terminal_height = state.terminal_expansion.height
+			end
+			state.terminal_expansion = nil
+		end
+
 		if direction == "up" then
 			state.terminal_height = state.terminal_height + amount
 		elseif direction == "down" then
@@ -840,6 +860,67 @@ function M.resize_managed_float(direction, amount)
 		state.codex_width = clamp(state.codex_width, minimum, maximum)
 	end
 
+	M.reflow()
+	return true
+end
+
+local function current_terminal()
+	local win = vim.api.nvim_get_current_win()
+	if M.window_group(win) ~= "terminal" then
+		vim.notify("Use this shortcut in the terminal panel", vim.log.levels.INFO)
+		return nil
+	end
+
+	return win, vim.api.nvim_win_get_buf(win)
+end
+
+function M.toggle_terminal_full_height()
+	if not current_terminal() then
+		return false
+	end
+
+	if state.terminal_expansion
+		and state.terminal_expansion.mode == "full"
+	then
+		state.terminal_expansion = nil
+	else
+		state.terminal_expansion = { mode = "full" }
+	end
+
+	M.reflow()
+	return true
+end
+
+function M.toggle_terminal_command_height()
+	local win, buf = current_terminal()
+	if not win then
+		return false
+	end
+
+	if state.terminal_expansion
+		and state.terminal_expansion.mode == "smart"
+	then
+		state.terminal_expansion = nil
+		M.reflow()
+		return true
+	end
+
+	local rows, err = require("features.terminal_commands")
+		.completed_command_rows(buf)
+	if not rows then
+		vim.notify(err, vim.log.levels.INFO)
+		return false
+	end
+
+	local code_win = M.find_code_window()
+	local bordered = code_win
+		and vim.api.nvim_win_get_width(code_win) >= 3
+		and vim.api.nvim_win_get_height(code_win) >= 3
+	local border_size = bordered and 2 or 0
+	state.terminal_expansion = {
+		mode = "smart",
+		height = rows + border_size,
+	}
 	M.reflow()
 	return true
 end
@@ -874,6 +955,7 @@ function M.reset()
 	end
 
 	state.terminal_height = M.defaults.terminal_height
+	state.terminal_expansion = nil
 	state.codex_width = M.defaults.codex_width
 	M.reflow()
 

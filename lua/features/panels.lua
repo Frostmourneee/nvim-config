@@ -1,6 +1,7 @@
 local map = vim.keymap.set
 local codex_status = require("features.codex_status")
 local workspace_layout = require("features.workspace_layout")
+local terminal_commands = require("features.terminal_commands")
 local M = {}
 
 local bridge_warning_shown = false
@@ -208,7 +209,16 @@ local function create_new_panel_buffer(kind)
 		if kind == "codex" then
 			started = start_codex(scratch, cwd)
 		else
-			vim.cmd("terminal")
+			local options = {
+				cwd = cwd,
+				term = true,
+			}
+			local env = terminal_commands.shell_environment()
+			if env then
+				options.env = env
+			end
+			local ok, job = pcall(vim.fn.jobstart, { vim.o.shell }, options)
+			started = ok and type(job) == "number" and job > 0
 		end
 	end)
 	if not started then

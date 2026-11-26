@@ -68,7 +68,7 @@ end, {
 	desc = "Toggle line wrapping in current window",
 })
 
-map("n", "<leader>E", function()
+map("n", "<leader>Q", function()
 	local modified_temporary_buffers = {}
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		if vim.api.nvim_buf_is_valid(buf)
