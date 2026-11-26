@@ -64,7 +64,11 @@ end
 local function jump_to_group_buffer(index)
 	local current = vim.api.nvim_get_current_buf()
 	local group = workspace_layout.buffer_group(current)
-	if not group or group == "tree" then
+	if group == "tree" then
+		group = "code"
+	end
+
+	if not group then
 		return false
 	end
 
