@@ -137,9 +137,27 @@ end
 function M.path_under_cursor()
 	local candidates = {}
 	local seen = {}
+	local cfile = vim.fn.expand("<cfile>")
+	local cword = vim.fn.expand("<cWORD>")
 
-	add_candidate(candidates, seen, vim.fn.expand("<cfile>"))
-	add_candidate(candidates, seen, vim.fn.expand("<cWORD>"))
+	-- On Unix, ':' is not part of 'isfname', so <cfile> drops the line
+	-- suffix from links such as /path/to/file.lua:48. Recover only an
+	-- immediately adjacent numeric suffix from the same cursor word. This
+	-- keeps the precise cursor target ahead of broader surrounding-text
+	-- candidates, which may contain other links.
+	if cfile ~= "" then
+		local file_start = cword:find(cfile, 1, true)
+		if file_start then
+			local suffix = cword:sub(file_start + #cfile)
+			local line = suffix:match("^:(%d+)")
+			if line then
+				add_candidate(candidates, seen, cfile .. ":" .. line)
+			end
+		end
+	end
+
+	add_candidate(candidates, seen, cfile)
+	add_candidate(candidates, seen, cword)
 
 	for _, text in ipairs(surrounding_text()) do
 		collect_from_text(candidates, seen, text)
