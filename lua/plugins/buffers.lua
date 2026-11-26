@@ -18,6 +18,26 @@ local function close_buffer(buf)
 	end
 end
 
+local function close_other_code_buffers()
+	local code_win = workspace_layout.find_code_window()
+	if not code_win then
+		vim.notify("No code editor window is visible", vim.log.levels.INFO)
+		return
+	end
+
+	local visible_buf = vim.api.nvim_win_get_buf(code_win)
+	if workspace_layout.buffer_group(visible_buf) ~= "code" then
+		vim.notify("No code buffer is visible", vim.log.levels.INFO)
+		return
+	end
+
+	for _, buf in ipairs(
+		workspace_layout.list_group_buffers("code", true, visible_buf)
+	) do
+		close_buffer(buf)
+	end
+end
+
 local function show_group_buffer(buf)
 	local group = workspace_layout.buffer_group(buf)
 	if group == "code" then
@@ -121,6 +141,10 @@ vim.keymap.set("n", "<leader>N", function()
 	cycle_group_buffer(-1)
 end, {
 	desc = "Previous buffer in current workspace group",
+})
+
+vim.keymap.set("n", "<leader>C", close_other_code_buffers, {
+	desc = "Close other code buffers",
 })
 
 vim.keymap.set("n", "<leader>sn", create_temporary_text_buffer, {
