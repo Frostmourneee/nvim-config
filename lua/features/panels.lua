@@ -392,10 +392,20 @@ end, {
 })
 
 map("n", "<leader><leader>r", function()
+	local origin = vim.api.nvim_get_current_win()
+	local cursor = vim.api.nvim_win_get_cursor(origin)
+	local view = vim.fn.winsaveview()
+
 	workspace_layout.reset()
 	create_panel("codex")
+
+	if vim.api.nvim_win_is_valid(origin) then
+		vim.api.nvim_set_current_win(origin)
+		pcall(vim.fn.winrestview, view)
+		pcall(vim.api.nvim_win_set_cursor, origin, cursor)
+	end
 end, {
-	desc = "Reset workspace layout and open Codex",
+	desc = "Reset workspace layout and open Codex without changing focus",
 })
 
 return M
