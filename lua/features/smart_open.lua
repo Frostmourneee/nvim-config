@@ -83,6 +83,105 @@ local function surrounding_text()
 	return texts
 end
 
+local function strip_codex_margin(line)
+	if line:sub(1, 2) == "  " then
+		return line:sub(3), 2
+	end
+
+	local bullet_margin = "• "
+	if line:sub(1, #bullet_margin) == bullet_margin then
+		return line:sub(#bullet_margin + 1), #bullet_margin
+	end
+
+	return line, 0
+end
+
+local function terminal_row_wraps(line)
+	return vim.fn.strdisplaywidth(line) >= vim.api.nvim_win_get_width(0)
+end
+
+local function crosses_boundary(first, last, boundaries)
+	for _, boundary in ipairs(boundaries) do
+		if first <= boundary and last > boundary then
+			return true
+		end
+	end
+
+	return false
+end
+
+function M.wrapped_url_under_cursor()
+	local buf = vim.api.nvim_get_current_buf()
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local row = cursor[1]
+	local line_count = vim.api.nvim_buf_line_count(buf)
+	local minimum = math.max(1, row - 4)
+	local maximum = math.min(line_count, row + 4)
+	local lines = vim.api.nvim_buf_get_lines(buf, minimum - 1, maximum, false)
+
+	local function line_at(line_number)
+		return lines[line_number - minimum + 1]
+	end
+
+	local first = row
+	while first > minimum and terminal_row_wraps(line_at(first - 1)) do
+		first = first - 1
+	end
+
+	local last = row
+	while last < maximum and terminal_row_wraps(line_at(last)) do
+		last = last + 1
+	end
+
+	-- Leave ordinary, single-row URLs to Neovim's built-in gx handler.
+	if first == last then
+		return nil
+	end
+
+	local joined = ""
+	local boundaries = {}
+	local cursor_offset
+
+	for line_number = first, last do
+		local content, margin = strip_codex_margin(line_at(line_number))
+		if line_number == row then
+			cursor_offset = #joined + cursor[2] + 1 - margin
+		end
+
+		joined = joined .. content
+		if line_number < last then
+			table.insert(boundaries, #joined)
+		end
+	end
+
+	if not cursor_offset or cursor_offset < 1 then
+		return nil
+	end
+
+	local search_from = 1
+	while true do
+		local url_start, raw_end = joined:find("https?://[^%s<>'\"`]+", search_from)
+		if not url_start then
+			return nil
+		end
+
+		local url = joined:sub(url_start, raw_end):gsub("[%)%]};,%.:!?]+$", "")
+		local url_end = url_start + #url - 1
+		if cursor_offset >= url_start
+			and cursor_offset <= url_end
+			and crosses_boundary(url_start, url_end, boundaries)
+			-- Codex renders Markdown destinations as `(URL)`. Requiring both
+			-- delimiters avoids guessing whether unrelated terminal rows join.
+			and joined:sub(url_start - 1, url_start - 1) == "("
+			and joined:sub(url_end + 1, url_end + 1) == ")"
+		then
+			return url
+		end
+
+		search_from = raw_end + 1
+	end
+end
+
 local function split_line_number(value)
 	local path, line = value:match("^(.-):(%d+)$")
 	if path and path ~= "" then
@@ -190,6 +289,12 @@ function M.open(default_callback)
 
 	if not is_codex_terminal then
 		use_default(default_callback)
+		return
+	end
+
+	local url = M.wrapped_url_under_cursor()
+	if url then
+		vim.ui.open(url)
 		return
 	end
 
