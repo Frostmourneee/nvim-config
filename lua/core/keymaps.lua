@@ -42,6 +42,10 @@ map("n", "<leader>a", "<cmd>%y<CR>", {
 	desc = "Copy whole file",
 })
 
+map("n", "<leader>va", "gg0vG$", {
+	desc = "Select whole file",
+})
+
 map("n", "<C-A-s>", function()
 	require("features.config_tree").toggle()
 end, {

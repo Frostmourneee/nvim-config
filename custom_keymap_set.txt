@@ -3,6 +3,7 @@ gx; Open web URI with system handler, or open Codex-answer file in central code 
 <Esc>; Clear search and LSP highlights [Normal]
 <leader>sy; Search for yanked text [Normal]
 <leader>a; Copy whole file [Normal]
+<leader>va; Select whole file [Normal]
 <C-A-s>; Toggle temporary Neovim settings workspace; close its code buffers and preserve terminal/Codex panels [Normal]
 <Esc>; Exit terminal mode [Terminal]
 yy; Yank Codex lines without the bullet-space or two-space UI margin; counts such as 3yy work [Normal, Codex terminal]
